@@ -9,7 +9,8 @@ from tqdm import tqdm
 
 class CollateFunc:
     def __init__(self, args):
-        pass
+        self.data_y_mode = args.data_y_mode
+        self.y_col = args.y_col
 
     def __call__(self, batch):
         # x, xn, now_y
@@ -21,7 +22,10 @@ class CollateFunc:
         x = np.stack(x, axis = 0)
         market_info = np.stack(market_info, axis = 0)
         xn = np.stack(xn, axis = 0)
-        y = np.stack(y, axis = 0)
+        if self.data_y_mode == 'trx_vol':
+            y = xn[:, self.y_col]
+        else:
+            y = np.stack(y, axis = 0)
         x = torch.FloatTensor(x)
         market_info = torch.FloatTensor(market_info)
         xn = torch.FloatTensor(xn)

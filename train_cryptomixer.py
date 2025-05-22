@@ -56,7 +56,7 @@ class args:
         self.device = 'cuda:2'
         self.early_stop = True
         self.save_path = 'model_log'
-        self.data_root_dir = '.'
+        self.data_root_dir = '../..'
         self.result_root_dir = 'result'
         self.data_to_cuda = False
         self.figure_path = 'loss_fig'
@@ -79,7 +79,8 @@ class args:
         self.split_rate = [8,1,1]
         
         self.random_sample = False
-        self.data_y_mode = 'trx_or_not' 
+        self.data_y_mode = 'trx_or_not'  # trx_direction  trx_vol
+        self.y_col = [1]
         self.circle_ar_inform = False
         self.other_inform = False
         self.binance_price_inform = False
@@ -246,6 +247,13 @@ class args:
             return 'grud'
         else:
             return 'baseline'
+
+    @property
+    def task_type(self):
+        if self.data_y_mode == 'trx_vol':
+            return 'regression'
+        else:
+            return 'classification'
 
 args = args()
 
@@ -554,13 +562,15 @@ def get_model():
                             use_market_mixing = args.use_market_mixing,
                             use_user_mixing = args.use_user_mixing,
                             use_time_mixing = args.use_time_mixing,
-                            use_interp = args.use_interp)
-    loss_fn = nn.CrossEntropyLoss()
+                            use_interp = args.use_interp,
+                            data_y_mode = args.data_y_mode,
+                            y_col = args.y_col)
     opt = torch.optim.Adam(model.parameters(), lr=args.lr)
     early_stop_s = EarlyStopAndSave('val_loss', 'min', 20, model, args.save_path, 'model')
     lr_s = torch.optim.lr_scheduler.CosineAnnealingLR(opt, 60, eta_min=1e-5)
     setup_seed(args.seed)
     if args.data_y_mode in ['trx_direction', 'trx_or_not']:
+        loss_fn = nn.CrossEntropyLoss()
         metrics = {
             'precision': torchmetrics.classification.MulticlassPrecision(2, average='macro').to(args.device),
             'recall': torchmetrics.classification.MulticlassRecall(2, average='macro').to(args.device),
@@ -570,6 +580,7 @@ def get_model():
             'acc': torchmetrics.classification.MulticlassAccuracy(2, average='macro').to(args.device),
         }
     elif args.data_y_mode == 'both':
+        loss_fn = nn.CrossEntropyLoss()
         metrics = {
             'precision': torchmetrics.classification.MulticlassPrecision(3, average='macro').to(args.device),
             'recall': torchmetrics.classification.MulticlassRecall(3, average='macro').to(args.device),
@@ -577,6 +588,10 @@ def get_model():
             'roauc': torchmetrics.classification.MulticlassAUROC(3, average='macro').to(args.device),
             'prauc': torchmetrics.classification.MulticlassAveragePrecision(3).to(args.device),
         }
+    elif args.data_y_mode == 'trx_vol':
+        loss_fn = torch.nn.MSELoss()
+        metrics = {}
+
 
     return model, loss_fn, opt, early_stop_s, lr_s, metrics
 
@@ -608,12 +623,21 @@ def train_model(modelname, debug = False, print_alpha = False):
         return result
 
 if __name__ == '__main__':
-    
+    '''
     args.use_market_mixing = True
     args.use_user_mixing = True
     args.use_time_mixing = True
+    args.use_interp = True
     args.model = 'cryptomixer'
-    for args.data_y_mode in ['trx_or_not']:
+    for args.data_y_mode in ['trx_vol']:
+        train_model('cryptomixer')'''
+
+    args.use_market_mixing = True
+    args.use_user_mixing = True
+    args.use_time_mixing = True
+    args.use_interp = False
+    args.model = 'cryptomixer'
+    for args.data_y_mode in ['trx_vol']:
         train_model('cryptomixer')
 
     args.loss_figure.draw_all()

@@ -56,7 +56,7 @@ class args:
         self.device = 'cuda:2'
         self.early_stop = True
         self.save_path = 'model_log'
-        self.data_root_dir = '.'
+        self.data_root_dir = '../..'
         self.result_root_dir = 'result'
         self.data_to_cuda = False
         self.figure_path = 'loss_fig'
@@ -90,6 +90,7 @@ class args:
         self.range_len = 900 # 900
         self.get_data_by_seq_len = True
         self.hidden_dim = 64
+        self.y_col = [1]
         
         self.user_embedding = True
         self.user_similarity_type = 1
@@ -483,6 +484,39 @@ def get_model():
                                model = 'swintrf',
                                iteract_module = args.iteract_module,
                                use_t2v = args.use_t2v)
+    elif args.model == 'iTransformer':
+        from mylab.baseline import iTransformerClassifier
+        model = iTransformerClassifier(args.input_xtime_index, 
+                               args.input_x_index, 
+                               args.input_xntime_index, 
+                               args.input_x_n_index,
+                               dropout = args.dropout_rate,
+                               output_dim = args.output_dim
+                               )
+    elif args.model == 'Informer':
+        from mylab.baseline import InformerClassifier
+        model = InformerClassifier(args.input_xtime_index, 
+                               args.input_x_index, 
+                               args.input_xntime_index, 
+                               args.input_x_n_index,
+                               output_dim = args.output_dim
+                               )
+    elif args.model == 'FEDformer':
+        from mylab.baseline import FEDformerClassifier
+        model = FEDformerClassifier(args.input_xtime_index, 
+                               args.input_x_index, 
+                               args.input_xntime_index, 
+                               args.input_x_n_index,
+                               output_dim = args.output_dim
+                               )
+    elif args.model == 'PatchTST':
+        from mylab.baseline import PatchTSTClassifier
+        model = PatchTSTClassifier(args.input_xtime_index, 
+                               args.input_x_index, 
+                               args.input_xntime_index, 
+                               args.input_x_n_index,
+                               output_dim = args.output_dim
+                               )
     elif args.model == 'cryptomixer':
         from mylab.cryptomixer import CryptoMxier
         model = CryptoMxier(args.input_xtime_index, 
@@ -537,7 +571,20 @@ class InferenceTime:
 if __name__ == '__main__':
     
     inf_t = InferenceTime()
-    
+
+    args.model = 'iTransformer'
+    for args.data_y_mode in ['trx_or_not']:
+        print(inf_t('iTransformer'))
+
+    args.model = 'Informer'
+    for args.data_y_mode in ['trx_or_not']:
+        print(inf_t('Informer'))
+
+    args.model = 'PatchTST'
+    for args.data_y_mode in ['trx_or_not']:
+        print(inf_t('PatchTST'))
+
+    '''
     args.model = 'cryptomixer'
     for args.data_y_mode in ['trx_or_not']:
         print(inf_t('cryptomixer'))
@@ -592,6 +639,6 @@ if __name__ == '__main__':
     inf_t = InferenceTime()
     for args.data_y_mode in ['trx_or_not']:
         print(inf_t('grud'))
-
+    '''
 
 

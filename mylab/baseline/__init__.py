@@ -8,7 +8,6 @@ from .time2vec import T2V, PositionalEncoding, TemporalPositionalEncoding
 from .model import TransformerEncoder
 from .lstm import LSTM
 from .gru import GRU
-from .smamba.model import SMamba
 from .node import NODE
 from .mtand.model import enc_mtan_classif_activity
 from .timesnet.model import TimesNet
@@ -20,6 +19,10 @@ from .cas_vit.model import rcvit_xs
 from .tsmixer.model import TSMixer
 from .stockmixer.model import StockMixer
 from .gru_d.model import GRUD, FadeDelta
+from .transformers import iTransformer, Informer
+from .FEDformer import FEDformer
+from .PatchTST import PatchTST
+
 
 class FinalMLP(nn.Module):
     def __init__(self, hidden_dim, final_hidden, output_dim):
@@ -466,4 +469,83 @@ class GRUDClassifier(nn.Module):
         final = torch.cat([now_encoded_x, xn], dim = 1) #(batch, dim * 4)
         out = self.finalmlp(final)
 
+        return out
+
+
+class iTransformerClassifier(nn.Module):
+    def __init__(self, input_xtime_index, input_x_index, input_xntime_index, input_x_n_index, hidden_dim = 64, output_dim = 2, final_hidden = 64, num_layers = 2, dropout = 0.0, market_info_dim = 23):
+        super().__init__()
+        
+        tsmodel = iTransformer()
+        self._model_ = BaselineClassifier(tsmodel, input_xtime_index, input_x_index, input_xntime_index, input_x_n_index, hidden_dim = hidden_dim, output_dim = output_dim, final_hidden = final_hidden, market_info_dim = market_info_dim)
+
+    def forward(self, x, market_info, xn):
+        out = self._model_(x, market_info, xn)
+        return out
+
+
+class InformerClassifier(nn.Module):
+    def __init__(self, input_xtime_index, input_x_index, input_xntime_index, input_x_n_index, hidden_dim = 64, output_dim = 2, final_hidden = 128, market_info_dim = 23):
+        super().__init__()
+
+        tsmodel = Informer(len(input_x_index)+market_info_dim, len(input_x_n_index))
+        self.tsmodel = tsmodel
+        
+        self.finalmlp = FinalMLP(hidden_dim, final_hidden, output_dim)
+
+        self.input_xtime_index = input_xtime_index
+        self.input_xntime_index = input_xntime_index
+        self.input_x_index = input_x_index
+        self.input_x_n_index = input_x_n_index
+
+        self.output_dim = output_dim
+
+    def forward(self, x, market_info, xn):
+
+        enc_x = x[:, :, self.input_x_index]  #(batch, seq, dim1)
+        enc_x = torch.cat([enc_x, market_info], dim = -1)
+        dec_x = torch.cat([x[:, -16:], xn.unsqueeze(1)], dim = 1)
+        dec_x = dec_x[:, :, self.input_x_n_index]  #(batch, dim2)
+
+        final = self.tsmodel(enc_x, dec_x)   #x2(batch, seq, dim * 2)
+
+        return final
+
+
+class FEDformerClassifier(nn.Module):
+    def __init__(self, input_xtime_index, input_x_index, input_xntime_index, input_x_n_index, hidden_dim = 64, output_dim = 2, final_hidden = 128, market_info_dim = 23):
+        super().__init__()
+
+        tsmodel = FEDformer(len(input_x_index)+market_info_dim, len(input_x_n_index))
+        self.tsmodel = tsmodel
+        
+        self.finalmlp = FinalMLP(hidden_dim, final_hidden, output_dim)
+
+        self.input_xtime_index = input_xtime_index
+        self.input_xntime_index = input_xntime_index
+        self.input_x_index = input_x_index
+        self.input_x_n_index = input_x_n_index
+
+        self.output_dim = output_dim
+
+    def forward(self, x, market_info, xn):
+
+        enc_x = x[:, :, self.input_x_index]  #(batch, seq, dim1)
+        enc_x = torch.cat([enc_x, market_info], dim = -1)
+        dec_x = torch.cat([x[:, -32:], xn.unsqueeze(1)], dim = 1)
+        dec_x = dec_x[:, :, self.input_x_n_index]  #(batch, dim2)
+
+        final = self.tsmodel(enc_x, dec_x)   #x2(batch, seq, dim * 2)
+
+        return final
+
+class PatchTSTClassifier(nn.Module):
+    def __init__(self, input_xtime_index, input_x_index, input_xntime_index, input_x_n_index, hidden_dim = 64, output_dim = 2, final_hidden = 64, num_layers = 2, dropout = 0.0, market_info_dim = 23):
+        super().__init__()
+        
+        tsmodel = PatchTST(64)
+        self._model_ = BaselineClassifier(tsmodel, input_xtime_index, input_x_index, input_xntime_index, input_x_n_index, hidden_dim = hidden_dim, output_dim = output_dim, final_hidden = final_hidden, market_info_dim = market_info_dim)
+
+    def forward(self, x, market_info, xn):
+        out = self._model_(x, market_info, xn)
         return out

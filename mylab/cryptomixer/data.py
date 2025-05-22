@@ -10,7 +10,8 @@ from tqdm import tqdm
 
 class CollateFunc:
     def __init__(self, args):
-        pass
+        self.data_y_mode = args.data_y_mode
+        self.y_col = args.y_col
 
     def __call__(self, batch):
 
@@ -38,7 +39,10 @@ class CollateFunc:
         multiuser_x_data = multiuser_x[:, :, :, :-2]
         multiuser_x_mask = multiuser_x[:, :, :, -1]
         xn = np.stack(now_xn, axis = 0)
-        y = np.stack(y, axis = 0)
+        if self.data_y_mode == 'trx_vol':
+            y = xn[:, self.y_col]
+        else:
+            y = np.stack(y, axis = 0)
         pad_mask = np.stack(pad_mask, axis = 0)
         
         x = torch.FloatTensor(multiuser_x)

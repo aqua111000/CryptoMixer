@@ -79,7 +79,7 @@ class MarketInfoMixer(nn.Module):
         output_channels,
         ff_dim,
         activation_fn = F.relu,
-        dropout_rate = 0.1,
+        dropout_rate = 0.05,
         norm_type = TimeBatchNorm2d,
     ):
         super().__init__()
@@ -96,6 +96,8 @@ class MarketInfoMixer(nn.Module):
             else nn.Identity()
         )
 
+        self.dropout = nn.Dropout(dropout_rate)
+
     def forward(self, x):
         x_proj = self.projection(x)
 
@@ -105,7 +107,7 @@ class MarketInfoMixer(nn.Module):
         x = self.activation_fn(x)
         x = self.fc2(x)  
 
-        x = x_proj + x 
+        x = x_proj + self.dropout(x) 
 
         return x
 
@@ -120,7 +122,7 @@ class ConditionalMarketInfoMixer(nn.Module):
         static_channels,
         ff_dim,
         activation_fn = F.relu,
-        dropout_rate = 0.1,
+        dropout_rate = 0.05,
         norm_type = nn.LayerNorm,
         use_market_mixing = True
     ):
@@ -163,7 +165,7 @@ class TimeInfoMixing(nn.Module):
         sequence_length,
         input_channels,
         activation_fn = F.relu,
-        dropout_rate = 0.1,
+        dropout_rate = 0.05,
         norm_type = TimeBatchNorm2d,
     ):
         super().__init__()
@@ -171,6 +173,8 @@ class TimeInfoMixing(nn.Module):
         self.norm = norm_type((sequence_length, input_channels))
         self.activation_fn = activation_fn
         self.fc1 = nn.Linear(sequence_length, sequence_length)
+
+        self.dropout = nn.Dropout(dropout_rate)
 
     def forward(self, x):
 
@@ -188,7 +192,7 @@ class UserInfoMixing(nn.Module):
         sequence_length,
         input_channels,
         activation_fn = F.relu,
-        dropout_rate = 0.1,
+        dropout_rate = 0.05,
         norm_type = TimeBatchNorm2d,
         use_interp = False,
     ):
@@ -199,7 +203,7 @@ class UserInfoMixing(nn.Module):
         self.U2 = nn.Linear(input_channels * 2, input_channels)
         self.p_pad = nn.Parameter(torch.randn(input_channels * 2))
         self.use_interp = use_interp
-        
+        self.dropout = nn.Dropout(dropout_rate)
 
     def forward(self, x, trx_mask = None, pad_mask = None):
 
@@ -217,6 +221,7 @@ class UserInfoMixing(nn.Module):
 
         # compute U1 and mixing
         U1 = self.adaptiveU1(x_v_pad, mask = mask)
+        U1 = self.dropout(U1)
         mix_out = self.U2(self.activation_fn(U1 @ x_v_pad)) # batch * seq * 1 * dim
         return self.norm(mix_out[:, :, 0] + x[:, :, -1])
 

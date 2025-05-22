@@ -50,7 +50,7 @@ def evaluate(model, dataloader, args, loss_fn, metrics = {}, data_already_to_cud
                     loss = loss.mean()
 
                 pred.append(y_pred)
-                label.append(y_class.int())
+                label.append(y_class)
                 _tqdm.update(1)  # 设置你每一次想让进度条更新的iteration 大小
 
                 step += 1
@@ -78,7 +78,7 @@ def train(model, dataloader, opt, loss_fn, args,
           data_already_to_cuda = False,
           multi_class = False,
           loss_figure = None,
-          print_alpha = False
+          print_alpha = False,
          ):
     
     setup_seed(args.seed)
@@ -95,96 +95,98 @@ def train(model, dataloader, opt, loss_fn, args,
     if print_alpha:
         model.print_alpha()
         model.print_attn_weight()
+        
+    with torch.autograd.set_detect_anomaly(True):
     
-    for epoch in range(args.epochs):
-        
-        opt.zero_grad()
-        model.train()
-        if args.distribute:
-            dataloader.sampler.set_epoch(epoch)
+        for epoch in range(args.epochs):
             
-        with tqdm(total = len(dataloader)) as _tqdm:
-            _tqdm.set_description('epoch train: {}/{}'.format(epoch + 1, args.epochs))  # 设置前缀 一般为epoch的信息
-            
-            [i.reset() for i in metrics.values()]
-            cum_loss = 0
-            cum_num = 0
-            step = 0
-            
+            opt.zero_grad()
             model.train()
-            for batch in dataloader:
-
-                if multi_class:
-                    model_input = batch[:-2]
-                    y_true = batch[-1]
-                    y_class =  batch[-2]
-                else:
-                    model_input = batch[:-1]
-                    y_true = batch[-1]
-                    y_class =  y_true
-                    
-                if not data_already_to_cuda:
-                    model_input = [i.to(device) for i in model_input]
-                    y_true = y_true.to(device)
-                    y_class = y_class.to(device)
-                    
-                y_pred = model(*model_input)
+            if args.distribute:
+                dataloader.sampler.set_epoch(epoch)
                 
-                loss = loss_fn(y_pred, y_true)  
-
-                if args.distribute:
-                    loss = loss.mean()
+            with tqdm(total = len(dataloader)) as _tqdm:
+                _tqdm.set_description('epoch train: {}/{}'.format(epoch + 1, args.epochs))  # 设置前缀 一般为epoch的信息
                 
-                loss.backward()
-
-                #torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=10, norm_type=2)
+                [i.reset() for i in metrics.values()]
+                cum_loss = 0
+                cum_num = 0
+                step = 0
                 
-                opt.step()
-                opt.zero_grad()
-                    
-                [i.update(y_pred, torch.argmax(y_class.int(), dim = 1)) for i in metrics.values()]
-
-                result_metrics = {}
-                for i in metrics.items():
-                    result_metrics[i[0]] = '{:.6f}'.format(i[1].compute())
-                cum_loss += loss.item()
-                cum_num += 1
-                result_metrics['loss'] = cum_loss / cum_num
-                _tqdm.set_postfix(**result_metrics)
-                _tqdm.update(1)
-                step += 1
-                
-                if lr_s is not None:
-                    lr_s.step(step / len(dataloader) + epoch)
-
-
-                if debug:
-                    if step > max_iter_for_debug:
-                        break_all = True
-                        break
-
-            if print_alpha:
-                model.print_alpha()
-                model.print_attn_weight()
-            
+                model.train()
+                for batch in dataloader:
+    
+                    if multi_class:
+                        model_input = batch[:-2]
+                        y_true = batch[-1]
+                        y_class =  batch[-2]
+                    else:
+                        model_input = batch[:-1]
+                        y_true = batch[-1]
+                        y_class =  y_true
                         
-        if break_all:
-            break
-            #  torch.nn.utils.clip_grad_norm_(model.parameters(), 5)
-        
-        if val_dataloader is not None:
-            val_result_metrics = evaluate(model, val_dataloader, args, loss_fn, metrics = metrics, data_already_to_cuda = data_already_to_cuda, multi_class = multi_class) 
-            for i in val_result_metrics:
-                result_metrics[i] = val_result_metrics[i]
-            if loss_figure is not None:
-                loss_figure.add_loss(result_metrics['val_loss'])
+                    if not data_already_to_cuda:
+                        model_input = [i.to(device) for i in model_input]
+                        y_true = y_true.to(device)
+                        y_class = y_class.to(device)
+                        
+                    y_pred = model(*model_input)
+                    
+                    loss = loss_fn(y_pred, y_true)  
+    
+                    if args.distribute:
+                        loss = loss.mean()
+                    
+                    loss.backward()
+    
+                    #torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=10, norm_type=2)
+                    
+                    opt.step()
+                    opt.zero_grad()
+                        
+                    [i.update(y_pred, torch.argmax(y_class.int(), dim = 1)) for i in metrics.values()]
+    
+                    result_metrics = {}
+                    for i in metrics.items():
+                        result_metrics[i[0]] = '{:.6f}'.format(i[1].compute())
+                    cum_loss += loss.item()
+                    cum_num += 1
+                    result_metrics['loss'] = cum_loss / cum_num
+                    _tqdm.set_postfix(**result_metrics)
+                    _tqdm.update(1)
+                    step += 1
+                    
+                    if lr_s is not None:
+                        lr_s.step(step / len(dataloader) + epoch)
+    
+    
+                    if debug:
+                        if step > max_iter_for_debug:
+                            break_all = True
+                            break
+    
+                if print_alpha:
+                    model.print_alpha()
+                    model.print_attn_weight()
                 
-        if lr_s is not None:
-            print(lr_s.get_last_lr())
-        
-        if early_stop_s is not None:
-            if early_stop_s(result_metrics, epoch):
+                            
+            if break_all:
                 break
+                #  torch.nn.utils.clip_grad_norm_(model.parameters(), 5)
+            
+            if val_dataloader is not None:
+                val_result_metrics = evaluate(model, val_dataloader, args, loss_fn, metrics = metrics, data_already_to_cuda = data_already_to_cuda, multi_class = multi_class) 
+                for i in val_result_metrics:
+                    result_metrics[i] = val_result_metrics[i]
+                if loss_figure is not None:
+                    loss_figure.add_loss(result_metrics['val_loss'])
+                    
+            if lr_s is not None:
+                print(lr_s.get_last_lr())
+            
+            if early_stop_s is not None:
+                if early_stop_s(result_metrics, epoch):
+                    break
             
     if early_stop_s is not None and (not debug):
         early_stop_s.restore()

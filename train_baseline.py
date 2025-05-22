@@ -56,7 +56,7 @@ class args:
         self.device = 'cuda:2'
         self.early_stop = True
         self.save_path = 'model_log'
-        self.data_root_dir = '.'
+        self.data_root_dir = '../..'
         self.result_root_dir = 'result'
         self.data_to_cuda = False
         self.figure_path = 'loss_fig'
@@ -66,7 +66,7 @@ class args:
         self.batch_size = 256
         self.epochs = 1000
         self.lr = 3e-3
-        self.seed = 42
+        self.seed = 1
         self.weight_decay = 1e-3
         
         self.classify = True
@@ -79,7 +79,8 @@ class args:
         self.split_rate = [8,1,1]
         
         self.random_sample = False
-        self.data_y_mode = 'trx_or_not' 
+        self.data_y_mode = 'trx_or_not'  # trx_direction  trx_vol
+        self.y_col = [1]
         self.circle_ar_inform = False
         self.other_inform = False
         self.binance_price_inform = False
@@ -191,6 +192,8 @@ class args:
     def output_dim(self):
         if self.data_y_mode == 'both':
             return 3
+        elif self.data_y_mode == 'trx_vol':
+            return len(self.y_col)
         else:
             return 2
 
@@ -246,6 +249,13 @@ class args:
             return 'grud'
         else:
             return 'baseline'
+
+    @property
+    def task_type(self):
+        if self.data_y_mode == 'trx_vol':
+            return 'regression'
+        else:
+            return 'classification'
 
 args = args()
 
@@ -416,98 +426,113 @@ def get_model():
                                args.input_xntime_index, 
                                args.input_x_n_index,
                                dropout = args.dropout_rate,
-                               device = args.device)
+                               device = args.device,
+                               output_dim = args.output_dim)
     elif args.model == 'lstm':
         from mylab.baseline import LSTMClassifier
         model = LSTMClassifier(args.input_xtime_index, 
                                args.input_x_index, 
                                args.input_xntime_index, 
                                args.input_x_n_index,
-                               dropout = args.dropout_rate)
+                               dropout = args.dropout_rate,
+                               output_dim = args.output_dim
+                               )
     elif args.model == 'gru':
         from mylab.baseline import GRUClassifier
         model = GRUClassifier(args.input_xtime_index, 
                                args.input_x_index, 
                                args.input_xntime_index, 
                                args.input_x_n_index,
-                               dropout = args.dropout_rate)
+                               dropout = args.dropout_rate,
+                               output_dim = args.output_dim)
     elif args.model == 'smamba':
         from mylab.baseline import SMambaClassifier
         model = SMambaClassifier(args.input_xtime_index, 
                                args.input_x_index, 
                                args.input_xntime_index, 
                                args.input_x_n_index,
-                               dropout = args.dropout_rate)
+                               dropout = args.dropout_rate,
+                               output_dim = args.output_dim)
     elif args.model == 'att':
         from mylab.baseline import ATTClassifier
         model = ATTClassifier(args.input_xtime_index, 
                                args.input_x_index, 
                                args.input_xntime_index, 
                                args.input_x_n_index,
-                               dropout = args.dropout_rate)
+                               dropout = args.dropout_rate,
+                               output_dim = args.output_dim)
     elif args.model == 'mtand':
         from mylab.baseline import MtandClassifier
         model = MtandClassifier(args.input_xtime_index, 
                                args.input_x_index, 
                                args.input_xntime_index, 
                                args.input_x_n_index,
-                               dropout = args.dropout_rate)
+                               dropout = args.dropout_rate,
+                               output_dim = args.output_dim)
     elif args.model == 'deeplob':
         from mylab.baseline import DeepLOBClassifier
         model = DeepLOBClassifier(args.input_xtime_index, 
                                args.input_x_index, 
                                args.input_xntime_index, 
                                args.input_x_n_index,
-                               dropout = args.dropout_rate)
+                               dropout = args.dropout_rate,
+                               output_dim = args.output_dim)
     elif args.model == 'stockmixer':
         from mylab.baseline import StockMixerClassifier
         model = StockMixerClassifier(args.input_xtime_index, 
                                args.input_x_index, 
                                args.input_xntime_index, 
                                args.input_x_n_index,
-                               dropout = args.dropout_rate)
+                               dropout = args.dropout_rate,
+                               output_dim = args.output_dim)
     elif args.model == 'cmt':
         from mylab.baseline import CMTClassifier
         model = CMTClassifier(args.input_xtime_index, 
                                args.input_x_index, 
                                args.input_xntime_index, 
                                args.input_x_n_index,
-                               dropout = args.dropout_rate)
+                               dropout = args.dropout_rate,
+                               output_dim = args.output_dim)
     elif args.model == 'casvit':
         from mylab.baseline import CasVitClassifier
         model = CasVitClassifier(args.input_xtime_index, 
                                args.input_x_index, 
                                args.input_xntime_index, 
                                args.input_x_n_index,
-                               dropout = args.dropout_rate)
+                               dropout = args.dropout_rate,
+                               output_dim = args.output_dim)
     elif args.model == 'swintrf':
         from mylab.baseline import SwinTransformerClassifier
         model = SwinTransformerClassifier(args.input_xtime_index, 
                                args.input_x_index, 
                                args.input_xntime_index, 
                                args.input_x_n_index,
-                               dropout = args.dropout_rate)
+                               dropout = args.dropout_rate,
+                               output_dim = args.output_dim)
     elif args.model == 'tsmixer':
         from mylab.baseline import TSMixerClassifier
         model = TSMixerClassifier(args.input_xtime_index, 
                                args.input_x_index, 
                                args.input_xntime_index, 
                                args.input_x_n_index,
-                               dropout = args.dropout_rate)
+                               dropout = args.dropout_rate,
+                               output_dim = args.output_dim)
     elif args.model == 'resnet':
         from mylab.baseline import ResNetClassifier
         model = ResNetClassifier(args.input_xtime_index, 
                                args.input_x_index, 
                                args.input_xntime_index, 
                                args.input_x_n_index,
-                               dropout = args.dropout_rate)
+                               dropout = args.dropout_rate,
+                               output_dim = args.output_dim)
     elif args.model == 'tsnet':
         from mylab.baseline import TimesNetClassifier
         model = TimesNetClassifier(args.input_xtime_index, 
                                args.input_x_index, 
                                args.input_xntime_index, 
                                args.input_x_n_index,
-                               dropout = args.dropout_rate)
+                               dropout = args.dropout_rate,
+                               output_dim = args.output_dim)
     elif args.model == 'cru':
         from mylab.baseline import CRUClassifier
         model = CRUClassifier(args.input_xtime_index, 
@@ -515,14 +540,16 @@ def get_model():
                                args.input_xntime_index, 
                                args.input_x_n_index,
                                dropout = args.dropout_rate,
-                               args = args)
+                               args = args,
+                               output_dim = args.output_dim)
     elif args.model == 'node':
         from mylab.baseline import NODEClassifier
         model = NODEClassifier(args.input_xtime_index, 
                                args.input_x_index, 
                                args.input_xntime_index, 
                                args.input_x_n_index,
-                               dropout = args.dropout_rate)
+                               dropout = args.dropout_rate,
+                               output_dim = args.output_dim)
     elif args.model == 'swintrf':
         from mylab.swintrf_good import mTANDClassifier
         model = mTANDClassifier(args.input_xtime_index, 
@@ -540,6 +567,39 @@ def get_model():
                                model = 'swintrf',
                                iteract_module = args.iteract_module,
                                use_t2v = args.use_t2v)
+    elif args.model == 'iTransformer':
+        from mylab.baseline import iTransformerClassifier
+        model = iTransformerClassifier(args.input_xtime_index, 
+                               args.input_x_index, 
+                               args.input_xntime_index, 
+                               args.input_x_n_index,
+                               dropout = args.dropout_rate,
+                               output_dim = args.output_dim
+                               )
+    elif args.model == 'Informer':
+        from mylab.baseline import InformerClassifier
+        model = InformerClassifier(args.input_xtime_index, 
+                               args.input_x_index, 
+                               args.input_xntime_index, 
+                               args.input_x_n_index,
+                               output_dim = args.output_dim
+                               )
+    elif args.model == 'FEDformer':
+        from mylab.baseline import FEDformerClassifier
+        model = FEDformerClassifier(args.input_xtime_index, 
+                               args.input_x_index, 
+                               args.input_xntime_index, 
+                               args.input_x_n_index,
+                               output_dim = args.output_dim
+                               )
+    elif args.model == 'PatchTST':
+        from mylab.baseline import PatchTSTClassifier
+        model = PatchTSTClassifier(args.input_xtime_index, 
+                               args.input_x_index, 
+                               args.input_xntime_index, 
+                               args.input_x_n_index,
+                               output_dim = args.output_dim
+                               )
     elif args.model == 'cryptomixer':
         from mylab.cryptomixer import CryptoMxier
         model = CryptoMxier(args.input_xtime_index, 
@@ -555,12 +615,13 @@ def get_model():
                             use_user_mixing = args.use_user_mixing,
                             use_time_mixing = args.use_time_mixing,
                             use_interp = args.use_interp)
-    loss_fn = nn.CrossEntropyLoss()
+        
     opt = torch.optim.Adam(model.parameters(), lr=args.lr)
     early_stop_s = EarlyStopAndSave('val_loss', 'min', 20, model, args.save_path, 'model')
     lr_s = torch.optim.lr_scheduler.CosineAnnealingLR(opt, 60, eta_min=1e-5)
     setup_seed(args.seed)
     if args.data_y_mode in ['trx_direction', 'trx_or_not']:
+        loss_fn = nn.CrossEntropyLoss()
         metrics = {
             'precision': torchmetrics.classification.MulticlassPrecision(2, average='macro').to(args.device),
             'recall': torchmetrics.classification.MulticlassRecall(2, average='macro').to(args.device),
@@ -570,6 +631,7 @@ def get_model():
             'acc': torchmetrics.classification.MulticlassAccuracy(2, average='macro').to(args.device),
         }
     elif args.data_y_mode == 'both':
+        loss_fn = nn.CrossEntropyLoss()
         metrics = {
             'precision': torchmetrics.classification.MulticlassPrecision(3, average='macro').to(args.device),
             'recall': torchmetrics.classification.MulticlassRecall(3, average='macro').to(args.device),
@@ -577,6 +639,9 @@ def get_model():
             'roauc': torchmetrics.classification.MulticlassAUROC(3, average='macro').to(args.device),
             'prauc': torchmetrics.classification.MulticlassAveragePrecision(3).to(args.device),
         }
+    elif args.data_y_mode == 'trx_vol':
+        loss_fn = torch.nn.MSELoss()
+        metrics = {}
 
     return model, loss_fn, opt, early_stop_s, lr_s, metrics
 
@@ -611,11 +676,24 @@ def train_model(modelname, debug = False, print_alpha = False):
 if __name__ == '__main__':
 
     ########################################
-
+    '''
     args.model = 'gru'    
-    for args.data_y_mode in ['trx_or_not']:
+    for args.data_y_mode in ['trx_vol']:
         train_model('gru')
-
+    '''
+    args.model = 'PatchTST'    
+    for args.data_y_mode in ['trx_or_not']:
+        train_model('PatchTST')
+    '''
+    args.model = 'FEDformer'    
+    for args.data_y_mode in ['trx_or_not']:
+        train_model('FEDformer')
+    '''
+    '''
+    args.model = 'iTransformer'    
+    for args.data_y_mode in ['trx_or_not']:
+        train_model('iTransformer')
+        
     args.model = 'lstm'    
     for args.data_y_mode in ['trx_or_not']:
         train_model('lstm')
@@ -639,12 +717,13 @@ if __name__ == '__main__':
     args.model = 'cmt'
     for args.data_y_mode in ['trx_or_not']:
         train_model('cmt')
-
+    '''
     ########################################
     '''
     args.model = 'node'
     for args.data_y_mode in ['trx_or_not']:
         train_model('node')
+    '''
     '''
     args.model = 'grud'
     for args.data_y_mode in ['trx_or_not']:
@@ -659,7 +738,7 @@ if __name__ == '__main__':
     args.model = 'stockmixer'
     for args.data_y_mode in ['trx_or_not']:
         train_model('stockmixer')
-
+    '''
     ########################################
 
     args.loss_figure.draw_all()

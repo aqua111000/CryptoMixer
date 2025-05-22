@@ -26,6 +26,8 @@ class CryptoMxier(nn.Module):
                  use_user_mixing = True,
                  use_time_mixing = True,
                  use_interp = True,
+                 data_y_mode = 'trx_or_not',
+                 y_col = [1],
                  ):
         super().__init__()
 
@@ -63,8 +65,14 @@ class CryptoMxier(nn.Module):
         self.temporal_projection = nn.Linear(sequence_length, 1)
         self.xn_projection = nn.Linear(len(input_x_n_index), hidden_dim)
 
-        self.final_nn = nn.Linear(hidden_dim * 2, output_dim)
-        self.activation_fn = activation_fn
+        if data_y_mode != 'trx_vol':
+            self.final_nn = nn.Linear(hidden_dim * 2, output_dim)
+            self.activation_fn = activation_fn
+        else:
+            self.final_nn = nn.Linear(hidden_dim * 2, hidden_dim)
+            self.activation_fn = activation_fn
+            self.final_final_nn = nn.Linear(hidden_dim, len(y_col))
+            
     
         self.input_x_index = input_x_index
         self.input_xtime_index = input_xtime_index
@@ -73,6 +81,7 @@ class CryptoMxier(nn.Module):
         self.output_dim = output_dim
         self.hidden_dim = hidden_dim
         self.use_interp = use_interp
+        self.data_y_mode = data_y_mode
         
     def forward(self, x, trx_mask, pad_mask, xn):
 
@@ -89,7 +98,10 @@ class CryptoMxier(nn.Module):
         
         x = self.temporal_projection(x.permute(0, 2, 1))[:,:,0]
         x = torch.cat([x, self.xn_projection(xn)], dim = -1)
-        x = self.activation_fn(self.final_nn(x))
+        if self.data_y_mode != 'trx_vol':
+            x = self.activation_fn(self.final_nn(x))
+        else:
+            x = self.final_final_nn(self.activation_fn(self.final_nn(x)))
 
         return x
         
